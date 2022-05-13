@@ -1,7 +1,22 @@
+
+
+
+
 data "aws_caller_identity" "current" {}
+
+ data "template_file" api_swagger{
+  template = "${file("${path.root}/modules/services/api-gateway/swagger.yml") }"
+     vars = {
+        LAMBDA_ARN = var.lambda_arn
+      }
+}
+
+
 
 resource "aws_api_gateway_rest_api" "api" {
   name = var.api_gw_name
+  body = data.template_file.api_swagger.rendered
+  /* body = file("${path.root}/modules/services/api-gateway/swagger.yml") */
   endpoint_configuration {
      types = ["REGIONAL"]
     /* types = [var.api_gw_endpoint_configuration_type] */
@@ -12,7 +27,7 @@ resource "aws_api_gateway_deployment" "deployment" {
   count = var.api_gw_disable_resource_creation ? 0 : 1
   rest_api_id = aws_api_gateway_rest_api.api.id
   stage_name = var.stage_name
-  depends_on = [aws_api_gateway_integration.request_method_integration,aws_api_gateway_integration_response.response_method_integration]
+  /* depends_on = [aws_api_gateway_integration.request_method_integration,aws_api_gateway_integration_response.response_method_integration] */
 }
 
 resource "aws_api_gateway_resource" "api_resource" {
@@ -51,7 +66,7 @@ resource "aws_api_gateway_integration" "request_method_integration" {
 }
 
 /* Step:- 3, POST method response */
-resource "aws_api_gateway_method_response" "response_method" {
+/* resource "aws_api_gateway_method_response" "response_method" {
   http_method = "${aws_api_gateway_integration.request_method_integration.http_method}"
   resource_id = "${aws_api_gateway_resource.messages_resource.id}"
   rest_api_id = aws_api_gateway_rest_api.api.id
@@ -59,15 +74,15 @@ resource "aws_api_gateway_method_response" "response_method" {
   response_models = {
     "application/json" = "Empty"
   }
-}
+} */
 
 /* Step:-  4, POST integration response */
-resource "aws_api_gateway_integration_response" "response_method_integration" {
+/* resource "aws_api_gateway_integration_response" "response_method_integration" {
   http_method ="${aws_api_gateway_method_response.response_method.http_method}"
   resource_id = "${aws_api_gateway_resource.messages_resource.id}"
   rest_api_id = aws_api_gateway_rest_api.api.id
   status_code = "${aws_api_gateway_method_response.response_method.status_code}"
-}
+} */
 
 
 /* Customized Routes */
@@ -79,7 +94,7 @@ resource "aws_lambda_permission" "apigw-lambda-allow" {
   function_name = var.lambda_name
   principal = "apigateway.amazonaws.com"
   statement_id = "AllowExecutionFromApiGateway"
-  depends_on = ["aws_api_gateway_rest_api.api","aws_api_gateway_resource.api_resource"]
+  /* depends_on = ["aws_api_gateway_rest_api.api","aws_api_gateway_resource.api_resource"] */
   source_arn = "arn:aws:execute-api:${var.region}:${data.aws_caller_identity.current.account_id}:${aws_api_gateway_rest_api.api.id}/*/*"
 }
 
